@@ -2,61 +2,319 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Miraditas Studio — Panel</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Miraditas Studio — Panel de Control</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 
-<header class="header">
-  <h1>Miraditas Studio</h1>
-</header>
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo-zone">
+        <div class="logo-petal">✿</div>
+        <div>
+          <div class="logo-name">Miraditas Studio</div>
+          <div class="logo-sub">Panel de Control</div>
+        </div>
+      </div>
+      <nav class="tabs">
+        <button class="tab active" data-tab="cierre">Cierre del Día</button>
+        <button class="tab" data-tab="historial">Historial</button>
+        <button class="tab" data-tab="equilibrio">Equilibrio</button>
+        <button class="tab" data-tab="empleadas">Empleadas</button>
+        <button class="tab" data-tab="servicios">Servicios</button>
+        <button class="tab" data-tab="costos">Costos Fijos</button>
+      </nav>
+    </div>
+  </header>
 
-<main class="main">
+  <!-- MAIN -->
+  <main class="main">
 
-<h2>Cierre del Día</h2>
+    <!-- TAB: CIERRE DEL DÍA -->
+    <section id="tab-cierre" class="tab-content active">
+      <div class="section-header">
+        <h2>Cierre del Día</h2>
+        <div class="date-display" id="fecha-hoy"></div>
+      </div>
 
-<div class="card">
-  <label>Empleada</label>
-  <select id="sel-empleada"></select>
+      <div class="cierre-grid">
+        <!-- Formulario de entrada -->
+        <div class="card form-card">
+          <h3 class="card-title">Registrar Servicio</h3>
 
-  <label>Servicio</label>
-  <select id="sel-servicio"></select>
+          <div class="field">
+            <label>Empleada</label>
+            <select id="sel-empleada">
+              <option value="">— Selecciona empleada —</option>
+            </select>
+          </div>
 
-  <label>Cantidad</label>
-  <input type="number" id="inp-cantidad" value="1"/>
+          <div class="field">
+            <label>Servicio</label>
+            <select id="sel-servicio">
+              <option value="">— Selecciona servicio —</option>
+            </select>
+          </div>
 
-  <button id="btn-agregar">Agregar</button>
-</div>
+          <div class="field">
+            <label>Cantidad</label>
+            <input type="number" id="inp-cantidad" min="1" value="1" />
+          </div>
 
-<div class="card">
-  <h3>Resumen</h3>
-  <div id="day-items"></div>
+          <div class="preview-box" id="preview-servicio" style="display:none">
+            <div class="preview-row"><span>Precio unitario</span><span id="prev-precio">—</span></div>
+            <div class="preview-row"><span>Total venta</span><span id="prev-total">—</span></div>
+            <div class="preview-row accent"><span>Para el negocio</span><span id="prev-spa">—</span></div>
+            <div class="preview-row muted"><span>Para la empleada</span><span id="prev-emp">—</span></div>
+          </div>
 
-  <div id="day-totals"></div>
+          <button class="btn-primary" id="btn-agregar">+ Agregar al cierre</button>
+        </div>
 
-  <h4>Pagos</h4>
-  <input id="inp-efectivo" type="number" placeholder="Efectivo"/>
-  <input id="inp-transfer" type="number" placeholder="Transferencia"/>
+        <!-- Resumen del día -->
+        <div class="card summary-card">
+          <h3 class="card-title">Resumen de hoy</h3>
 
-  <!-- NUEVO -->
-  <h4>Gastos del día</h4>
-  <input id="inp-gastos" type="number" value="0"/>
+          <div class="day-items" id="day-items">
+            <div class="empty-state">No hay servicios registrados aún</div>
+          </div>
 
-  <button id="btn-cerrar">Cerrar día</button>
-</div>
+          <div class="day-totals" id="day-totals" style="display:none">
+            <div class="total-row"><span>Total vendido</span><span id="tot-vendido">$0</span></div>
+            <div class="total-row accent"><span>Ganancia del negocio</span><span id="tot-negocio">$0</span></div>
+            <div class="total-row muted"><span>Pago empleadas</span><span id="tot-empleadas">$0</span></div>
+          </div>
 
-<div class="card">
-  <h2>Historial</h2>
-  <button id="btn-export-csv">Exportar CSV</button>
-  <button id="btn-export-dia">Exportar último cierre</button>
-  <table>
-    <tbody id="hist-body"></tbody>
-  </table>
-</div>
+          <div class="payment-section" id="payment-section" style="display:none">
+            <h4>Forma de pago</h4>
+            <div class="payment-row">
+              <div class="field half">
+                <label>Efectivo</label>
+                <input type="number" id="inp-efectivo" min="0" value="0" />
+              </div>
+              <div class="field half">
+                <label>Transferencia</label>
+                <input type="number" id="inp-transfer" min="0" value="0" />
+              </div>
+            </div>
+          </div>
 
-</main>
+          <button class="btn-close" id="btn-cerrar" style="display:none">✓ Cerrar el día</button>
+        </div>
+      </div>
 
-<script src="app.js"></script>
+      <!-- Barra equilibrio del día -->
+      <div class="card equilibrio-mini" id="equilibrio-mini">
+        <div class="eq-label">
+          <span>Progreso mensual hacia el punto de equilibrio</span>
+          <span id="eq-pct-txt">0%</span>
+        </div>
+        <div class="eq-bar-bg">
+          <div class="eq-bar-fill" id="eq-bar-fill" style="width:0%"></div>
+        </div>
+        <div class="eq-details">
+          <span>Acumulado: <strong id="eq-acum">$0</strong></span>
+          <span>Meta: <strong id="eq-meta">$4.300.000</strong></span>
+          <span>Falta: <strong id="eq-falta">$4.300.000</strong></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: HISTORIAL -->
+    <section id="tab-historial" class="tab-content">
+      <div class="section-header">
+        <h2>Historial del Mes</h2>
+        <button class="btn-export" id="btn-export-csv">⬇ Exportar CSV</button>
+      </div>
+      <div class="card">
+        <table class="hist-table" id="hist-table">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Empleada</th>
+              <th>Servicio</th>
+              <th>Cant.</th>
+              <th>Venta</th>
+              <th>Negocio</th>
+              <th>Empleada</th>
+              <th>Pago</th>
+            </tr>
+          </thead>
+          <tbody id="hist-body">
+            <tr><td colspan="8" class="empty-state">Sin registros aún</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- TAB: PUNTO DE EQUILIBRIO -->
+    <section id="tab-equilibrio" class="tab-content">
+      <div class="section-header"><h2>Punto de Equilibrio</h2></div>
+
+      <div class="eq-cards">
+        <div class="card eq-stat">
+          <div class="eq-stat-label">Costos fijos mensuales</div>
+          <div class="eq-stat-value" id="eq-costos">$4.300.000</div>
+        </div>
+        <div class="card eq-stat">
+          <div class="eq-stat-label">Ganancia acumulada este mes</div>
+          <div class="eq-stat-value green" id="eq-ganancia">$0</div>
+        </div>
+        <div class="card eq-stat">
+          <div class="eq-stat-label">Utilidad neta</div>
+          <div class="eq-stat-value" id="eq-utilidad">-$4.300.000</div>
+        </div>
+        <div class="card eq-stat">
+          <div class="eq-stat-label">Meta diaria (días restantes)</div>
+          <div class="eq-stat-value" id="eq-meta-diaria">—</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:1.5rem">
+        <h3 class="card-title">Progreso mensual</h3>
+        <div class="eq-bar-bg big">
+          <div class="eq-bar-fill" id="eq-bar-big" style="width:0%"></div>
+          <span class="eq-bar-label" id="eq-bar-label">0%</span>
+        </div>
+        <div class="eq-status" id="eq-status">En déficit</div>
+      </div>
+
+      <div class="card" style="margin-top:1.5rem">
+        <h3 class="card-title">Ganancia por día (este mes)</h3>
+        <div class="chart-container" id="chart-dias"></div>
+      </div>
+    </section>
+
+    <!-- TAB: EMPLEADAS -->
+    <section id="tab-empleadas" class="tab-content">
+      <div class="section-header">
+        <h2>Empleadas</h2>
+        <button class="btn-primary" id="btn-nueva-emp">+ Nueva empleada</button>
+      </div>
+
+      <div class="emp-grid" id="emp-grid"></div>
+
+      <!-- Modal nueva empleada -->
+      <div class="modal-bg" id="modal-emp" style="display:none">
+        <div class="modal">
+          <h3>Empleada</h3>
+          <div class="field">
+            <label>Nombre</label>
+            <input type="text" id="inp-emp-nombre" placeholder="Nombre completo" />
+          </div>
+          <div class="field">
+            <label>Tipo / Área</label>
+            <select id="inp-emp-tipo">
+              <option value="lashista">Lashista (60% negocio / 40% ella)</option>
+              <option value="manicurista">Manicurista (50% negocio / 50% ella)</option>
+              <option value="estilista">Estilista (definir % manual)</option>
+            </select>
+          </div>
+          <div class="field" id="campo-pct-manual" style="display:none">
+            <label>% para el negocio</label>
+            <input type="number" id="inp-emp-pct" min="1" max="99" value="60" /> %
+          </div>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btn-cancel-emp">Cancelar</button>
+            <button class="btn-primary" id="btn-save-emp">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: SERVICIOS -->
+    <section id="tab-servicios" class="tab-content">
+      <div class="section-header">
+        <h2>Catálogo de Servicios</h2>
+        <button class="btn-primary" id="btn-nuevo-srv">+ Nuevo servicio</button>
+      </div>
+
+      <div class="servicios-grupos" id="servicios-grupos"></div>
+
+      <!-- Modal nuevo servicio -->
+      <div class="modal-bg" id="modal-srv" style="display:none">
+        <div class="modal">
+          <h3 id="modal-srv-title">Servicio</h3>
+          <div class="field">
+            <label>Nombre del servicio</label>
+            <input type="text" id="inp-srv-nombre" placeholder="Ej: Manicure Tradicional" />
+          </div>
+          <div class="field">
+            <label>Precio ($)</label>
+            <input type="number" id="inp-srv-precio" min="0" />
+          </div>
+          <div class="field">
+            <label>Categoría</label>
+            <select id="inp-srv-cat">
+              <option value="manicure">Manicure / Pies</option>
+              <option value="lashes">Pestañas / Cejas</option>
+              <option value="otro">Otro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>% comisión para el negocio</label>
+            <select id="inp-srv-pct">
+              <option value="0.6">60% negocio (lashistas)</option>
+              <option value="0.5">50% negocio (manicuristas)</option>
+              <option value="custom">Otro %</option>
+            </select>
+          </div>
+          <div class="field" id="campo-srv-custom" style="display:none">
+            <label>% exacto para el negocio</label>
+            <input type="number" id="inp-srv-pct-custom" min="1" max="99" value="60" />
+          </div>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btn-cancel-srv">Cancelar</button>
+            <button class="btn-primary" id="btn-save-srv">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB: COSTOS FIJOS -->
+    <section id="tab-costos" class="tab-content">
+      <div class="section-header">
+        <h2>Costos Fijos Mensuales</h2>
+        <button class="btn-primary" id="btn-nuevo-costo">+ Agregar costo</button>
+      </div>
+
+      <div class="card">
+        <table class="costos-table" id="costos-table">
+          <thead>
+            <tr><th>Concepto</th><th>Valor mensual</th><th></th></tr>
+          </thead>
+          <tbody id="costos-body"></tbody>
+          <tfoot>
+            <tr class="costos-total"><td>TOTAL</td><td id="costos-total-val">$0</td><td></td></tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="modal-bg" id="modal-costo" style="display:none">
+        <div class="modal">
+          <h3>Costo Fijo</h3>
+          <div class="field">
+            <label>Concepto</label>
+            <input type="text" id="inp-costo-nombre" placeholder="Ej: Arriendo" />
+          </div>
+          <div class="field">
+            <label>Valor mensual ($)</label>
+            <input type="number" id="inp-costo-valor" min="0" />
+          </div>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btn-cancel-costo">Cancelar</button>
+            <button class="btn-primary" id="btn-save-costo">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="app.js"></script>
 </body>
 </html>

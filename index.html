@@ -22,6 +22,7 @@
       </div>
       <nav class="tabs">
         <button class="tab active" data-tab="cierre">Cierre del Día</button>
+        <button class="tab" data-tab="dashboard">Dashboard</button>
         <button class="tab" data-tab="historial">Historial</button>
         <button class="tab" data-tab="equilibrio">Equilibrio</button>
         <button class="tab" data-tab="empleadas">Empleadas</button>
@@ -31,10 +32,15 @@
     </div>
   </header>
 
+  <!-- ALERTAS -->
+  <div id="alertas-banner" class="alertas-banner" style="display:none"></div>
+
   <!-- MAIN -->
   <main class="main">
 
-    <!-- TAB: CIERRE DEL DÍA -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: CIERRE DEL DÍA
+    ══════════════════════════════════════════════════ -->
     <section id="tab-cierre" class="tab-content active">
       <div class="section-header">
         <h2>Cierre del Día</h2>
@@ -42,42 +48,34 @@
       </div>
 
       <div class="cierre-grid">
-        <!-- Formulario de entrada -->
-        <div class="card form-card">
-          <h3 class="card-title">Registrar Servicio</h3>
 
+        <!-- Formulario: Registrar Servicio -->
+        <div class="card form-card">
+          <h3 class="card-title">➕ Registrar Servicio</h3>
           <div class="field">
             <label>Empleada</label>
-            <select id="sel-empleada">
-              <option value="">— Selecciona empleada —</option>
-            </select>
+            <select id="sel-empleada"><option value="">— Selecciona empleada —</option></select>
           </div>
-
           <div class="field">
             <label>Servicio</label>
-            <select id="sel-servicio">
-              <option value="">— Selecciona servicio —</option>
-            </select>
+            <select id="sel-servicio"><option value="">— Selecciona servicio —</option></select>
           </div>
-
           <div class="field">
             <label>Cantidad</label>
             <input type="number" id="inp-cantidad" min="1" value="1" />
           </div>
-
           <div class="preview-box" id="preview-servicio" style="display:none">
             <div class="preview-row"><span>Precio unitario</span><span id="prev-precio">—</span></div>
             <div class="preview-row"><span>Total venta</span><span id="prev-total">—</span></div>
             <div class="preview-row accent"><span>Para el negocio</span><span id="prev-spa">—</span></div>
             <div class="preview-row muted"><span>Para la empleada</span><span id="prev-emp">—</span></div>
           </div>
-
           <button class="btn-primary" id="btn-agregar">+ Agregar al cierre</button>
         </div>
 
-        <!-- Resumen del día -->
+        <!-- Resumen del día + gastos + pago + cerrar -->
         <div class="card summary-card">
-          <h3 class="card-title">Resumen de hoy</h3>
+          <h3 class="card-title">📋 Resumen de hoy</h3>
 
           <div class="day-items" id="day-items">
             <div class="empty-state">No hay servicios registrados aún</div>
@@ -85,21 +83,33 @@
 
           <div class="day-totals" id="day-totals" style="display:none">
             <div class="total-row"><span>Total vendido</span><span id="tot-vendido">$0</span></div>
-            <div class="total-row accent"><span>Ganancia del negocio</span><span id="tot-negocio">$0</span></div>
             <div class="total-row muted"><span>Pago empleadas</span><span id="tot-empleadas">$0</span></div>
+            <div class="total-row accent"><span>Ganancia bruta negocio</span><span id="tot-negocio">$0</span></div>
           </div>
 
+          <!-- Gastos del día -->
+          <div class="gastos-section" id="gastos-section" style="display:none">
+            <div class="gastos-header">
+              <h4>💸 Gastos del día</h4>
+              <button class="btn-add-gasto" id="btn-add-gasto">+ Agregar gasto</button>
+            </div>
+            <div id="gastos-list"></div>
+            <div class="gastos-total-row" id="gastos-total-row" style="display:none">
+              <span>Total gastos</span><span id="gastos-total-val" class="gastos-total-num">$0</span>
+            </div>
+            <!-- Ganancia REAL -->
+            <div class="ganancia-real-box" id="ganancia-real-box">
+              <span>💰 GANANCIA REAL del día</span>
+              <span id="ganancia-real-val" class="ganancia-real-num">$0</span>
+            </div>
+          </div>
+
+          <!-- Forma de pago -->
           <div class="payment-section" id="payment-section" style="display:none">
             <h4>Forma de pago</h4>
             <div class="payment-row">
-              <div class="field half">
-                <label>Efectivo</label>
-                <input type="number" id="inp-efectivo" min="0" value="0" />
-              </div>
-              <div class="field half">
-                <label>Transferencia</label>
-                <input type="number" id="inp-transfer" min="0" value="0" />
-              </div>
+              <div class="field half"><label>Efectivo</label><input type="number" id="inp-efectivo" min="0" value="0" /></div>
+              <div class="field half"><label>Transferencia</label><input type="number" id="inp-transfer" min="0" value="0" /></div>
             </div>
           </div>
 
@@ -107,7 +117,7 @@
         </div>
       </div>
 
-      <!-- Barra equilibrio del día -->
+      <!-- Barra equilibrio mini -->
       <div class="card equilibrio-mini" id="equilibrio-mini">
         <div class="eq-label">
           <span>Progreso mensual hacia el punto de equilibrio</span>
@@ -122,58 +132,163 @@
           <span>Falta: <strong id="eq-falta">$4.300.000</strong></span>
         </div>
       </div>
+
+      <!-- Modal agregar gasto -->
+      <div class="modal-bg" id="modal-gasto" style="display:none">
+        <div class="modal">
+          <h3>Gasto del día</h3>
+          <div class="field">
+            <label>Concepto</label>
+            <select id="inp-gasto-tipo">
+              <option value="Compras del día">Compras del día</option>
+              <option value="Transporte">Transporte</option>
+              <option value="Material urgente">Material urgente</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="field" id="campo-gasto-otro" style="display:none">
+            <label>Descripción</label>
+            <input type="text" id="inp-gasto-desc" placeholder="Describe el gasto" />
+          </div>
+          <div class="field">
+            <label>Valor ($)</label>
+            <input type="number" id="inp-gasto-valor" min="0" placeholder="0" />
+          </div>
+          <div class="modal-actions">
+            <button class="btn-secondary" id="btn-cancel-gasto">Cancelar</button>
+            <button class="btn-primary" id="btn-save-gasto">Guardar</button>
+          </div>
+        </div>
+      </div>
     </section>
 
-    <!-- TAB: HISTORIAL -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: DASHBOARD MENSUAL
+    ══════════════════════════════════════════════════ -->
+    <section id="tab-dashboard" class="tab-content">
+      <div class="section-header"><h2>Dashboard Mensual</h2></div>
+
+      <!-- KPIs -->
+      <div class="kpi-grid" id="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">💵</div>
+          <div class="kpi-label">Total vendido</div>
+          <div class="kpi-value" id="dash-total-vendido">$0</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-icon">🏦</div>
+          <div class="kpi-label">Ganancia negocio (bruta)</div>
+          <div class="kpi-value" id="dash-ganancia-bruta">$0</div>
+        </div>
+        <div class="kpi-card rose">
+          <div class="kpi-icon">💸</div>
+          <div class="kpi-label">Total gastos extra</div>
+          <div class="kpi-value" id="dash-gastos-extra">$0</div>
+        </div>
+        <div class="kpi-card dark">
+          <div class="kpi-icon">✨</div>
+          <div class="kpi-label">Ganancia REAL (neta)</div>
+          <div class="kpi-value" id="dash-ganancia-real">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">💳</div>
+          <div class="kpi-label">Total efectivo</div>
+          <div class="kpi-value" id="dash-efectivo">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📲</div>
+          <div class="kpi-label">Total transferencia</div>
+          <div class="kpi-value" id="dash-transfer">$0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📅</div>
+          <div class="kpi-label">Días trabajados</div>
+          <div class="kpi-value" id="dash-dias">0</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon">📊</div>
+          <div class="kpi-label">Promedio diario</div>
+          <div class="kpi-value" id="dash-promedio">$0</div>
+        </div>
+      </div>
+
+      <!-- Ranking empleadas + servicio más vendido -->
+      <div class="dash-row">
+        <div class="card" style="flex:1">
+          <h3 class="card-title">🏆 Ranking de Empleadas</h3>
+          <div id="ranking-empleadas"><div class="empty-state">Sin datos aún</div></div>
+        </div>
+        <div class="card" style="flex:1">
+          <h3 class="card-title">🌟 Servicios Más Vendidos</h3>
+          <div id="ranking-servicios"><div class="empty-state">Sin datos aún</div></div>
+        </div>
+      </div>
+
+      <!-- Métodos de pago -->
+      <div class="card" style="margin-top:1.5rem">
+        <h3 class="card-title">💳 Métodos de Pago del Mes</h3>
+        <div class="pago-bars" id="pago-bars">
+          <div class="empty-state">Sin datos aún</div>
+        </div>
+      </div>
+
+      <!-- Gráfica diaria -->
+      <div class="card" style="margin-top:1.5rem">
+        <h3 class="card-title">📈 Ventas por día</h3>
+        <div class="chart-container" id="chart-dash-dias"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════
+         TAB: HISTORIAL
+    ══════════════════════════════════════════════════ -->
     <section id="tab-historial" class="tab-content">
       <div class="section-header">
         <h2>Historial del Mes</h2>
-        <button class="btn-export" id="btn-export-csv">⬇ Exportar CSV</button>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn-export" id="btn-ver-cierres">📄 Ver Cierres</button>
+          <button class="btn-export" id="btn-export-csv">⬇ Exportar CSV</button>
+        </div>
       </div>
-      <div class="card">
-        <table class="hist-table" id="hist-table">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Empleada</th>
-              <th>Servicio</th>
-              <th>Cant.</th>
-              <th>Venta</th>
-              <th>Negocio</th>
-              <th>Empleada</th>
-              <th>Pago</th>
-            </tr>
-          </thead>
-          <tbody id="hist-body">
-            <tr><td colspan="8" class="empty-state">Sin registros aún</td></tr>
-          </tbody>
-        </table>
+
+      <!-- Vista: detalle servicios -->
+      <div id="vista-servicios">
+        <div class="card">
+          <table class="hist-table" id="hist-table">
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Empleada</th><th>Servicio</th>
+                <th>Cant.</th><th>Venta</th><th>Negocio</th><th>Empleada</th><th>Pago</th>
+              </tr>
+            </thead>
+            <tbody id="hist-body">
+              <tr><td colspan="8" class="empty-state">Sin registros aún</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Vista: cierres de caja -->
+      <div id="vista-cierres" style="display:none">
+        <div class="section-header" style="margin-top:0">
+          <button class="btn-secondary" id="btn-volver-servicios">← Volver al detalle</button>
+        </div>
+        <div id="cierres-list"></div>
       </div>
     </section>
 
-    <!-- TAB: PUNTO DE EQUILIBRIO -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: PUNTO DE EQUILIBRIO
+    ══════════════════════════════════════════════════ -->
     <section id="tab-equilibrio" class="tab-content">
       <div class="section-header"><h2>Punto de Equilibrio</h2></div>
-
       <div class="eq-cards">
-        <div class="card eq-stat">
-          <div class="eq-stat-label">Costos fijos mensuales</div>
-          <div class="eq-stat-value" id="eq-costos">$4.300.000</div>
-        </div>
-        <div class="card eq-stat">
-          <div class="eq-stat-label">Ganancia acumulada este mes</div>
-          <div class="eq-stat-value green" id="eq-ganancia">$0</div>
-        </div>
-        <div class="card eq-stat">
-          <div class="eq-stat-label">Utilidad neta</div>
-          <div class="eq-stat-value" id="eq-utilidad">-$4.300.000</div>
-        </div>
-        <div class="card eq-stat">
-          <div class="eq-stat-label">Meta diaria (días restantes)</div>
-          <div class="eq-stat-value" id="eq-meta-diaria">—</div>
-        </div>
+        <div class="card eq-stat"><div class="eq-stat-label">Costos fijos mensuales</div><div class="eq-stat-value" id="eq-costos">$4.300.000</div></div>
+        <div class="card eq-stat"><div class="eq-stat-label">Ganancia bruta acumulada</div><div class="eq-stat-value green" id="eq-ganancia">$0</div></div>
+        <div class="card eq-stat"><div class="eq-stat-label">Gastos extra acumulados</div><div class="eq-stat-value" id="eq-gastos-extra" style="color:var(--rose)">$0</div></div>
+        <div class="card eq-stat"><div class="eq-stat-label">Utilidad neta real</div><div class="eq-stat-value" id="eq-utilidad">-$4.300.000</div></div>
+        <div class="card eq-stat"><div class="eq-stat-label">Meta diaria (días restantes)</div><div class="eq-stat-value" id="eq-meta-diaria">—</div></div>
       </div>
-
       <div class="card" style="margin-top:1.5rem">
         <h3 class="card-title">Progreso mensual</h3>
         <div class="eq-bar-bg big">
@@ -182,30 +297,26 @@
         </div>
         <div class="eq-status" id="eq-status">En déficit</div>
       </div>
-
       <div class="card" style="margin-top:1.5rem">
         <h3 class="card-title">Ganancia por día (este mes)</h3>
         <div class="chart-container" id="chart-dias"></div>
       </div>
     </section>
 
-    <!-- TAB: EMPLEADAS -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: EMPLEADAS
+    ══════════════════════════════════════════════════ -->
     <section id="tab-empleadas" class="tab-content">
       <div class="section-header">
         <h2>Empleadas</h2>
-        <button class="btn-primary" id="btn-nueva-emp">+ Nueva empleada</button>
+        <button class="btn-primary" id="btn-nueva-emp" style="width:auto;padding:.5rem 1.2rem">+ Nueva empleada</button>
       </div>
-
       <div class="emp-grid" id="emp-grid"></div>
 
-      <!-- Modal nueva empleada -->
       <div class="modal-bg" id="modal-emp" style="display:none">
         <div class="modal">
           <h3>Empleada</h3>
-          <div class="field">
-            <label>Nombre</label>
-            <input type="text" id="inp-emp-nombre" placeholder="Nombre completo" />
-          </div>
+          <div class="field"><label>Nombre</label><input type="text" id="inp-emp-nombre" placeholder="Nombre completo" /></div>
           <div class="field">
             <label>Tipo / Área</label>
             <select id="inp-emp-tipo">
@@ -226,27 +337,21 @@
       </div>
     </section>
 
-    <!-- TAB: SERVICIOS -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: SERVICIOS
+    ══════════════════════════════════════════════════ -->
     <section id="tab-servicios" class="tab-content">
       <div class="section-header">
         <h2>Catálogo de Servicios</h2>
-        <button class="btn-primary" id="btn-nuevo-srv">+ Nuevo servicio</button>
+        <button class="btn-primary" id="btn-nuevo-srv" style="width:auto;padding:.5rem 1.2rem">+ Nuevo servicio</button>
       </div>
-
       <div class="servicios-grupos" id="servicios-grupos"></div>
 
-      <!-- Modal nuevo servicio -->
       <div class="modal-bg" id="modal-srv" style="display:none">
         <div class="modal">
           <h3 id="modal-srv-title">Servicio</h3>
-          <div class="field">
-            <label>Nombre del servicio</label>
-            <input type="text" id="inp-srv-nombre" placeholder="Ej: Manicure Tradicional" />
-          </div>
-          <div class="field">
-            <label>Precio ($)</label>
-            <input type="number" id="inp-srv-precio" min="0" />
-          </div>
+          <div class="field"><label>Nombre</label><input type="text" id="inp-srv-nombre" placeholder="Ej: Manicure Tradicional" /></div>
+          <div class="field"><label>Precio ($)</label><input type="number" id="inp-srv-precio" min="0" /></div>
           <div class="field">
             <label>Categoría</label>
             <select id="inp-srv-cat">
@@ -275,36 +380,26 @@
       </div>
     </section>
 
-    <!-- TAB: COSTOS FIJOS -->
+    <!-- ══════════════════════════════════════════════════
+         TAB: COSTOS FIJOS
+    ══════════════════════════════════════════════════ -->
     <section id="tab-costos" class="tab-content">
       <div class="section-header">
         <h2>Costos Fijos Mensuales</h2>
-        <button class="btn-primary" id="btn-nuevo-costo">+ Agregar costo</button>
+        <button class="btn-primary" id="btn-nuevo-costo" style="width:auto;padding:.5rem 1.2rem">+ Agregar costo</button>
       </div>
-
       <div class="card">
         <table class="costos-table" id="costos-table">
-          <thead>
-            <tr><th>Concepto</th><th>Valor mensual</th><th></th></tr>
-          </thead>
+          <thead><tr><th>Concepto</th><th>Valor mensual</th><th></th></tr></thead>
           <tbody id="costos-body"></tbody>
-          <tfoot>
-            <tr class="costos-total"><td>TOTAL</td><td id="costos-total-val">$0</td><td></td></tr>
-          </tfoot>
+          <tfoot><tr class="costos-total"><td>TOTAL</td><td id="costos-total-val">$0</td><td></td></tr></tfoot>
         </table>
       </div>
-
       <div class="modal-bg" id="modal-costo" style="display:none">
         <div class="modal">
           <h3>Costo Fijo</h3>
-          <div class="field">
-            <label>Concepto</label>
-            <input type="text" id="inp-costo-nombre" placeholder="Ej: Arriendo" />
-          </div>
-          <div class="field">
-            <label>Valor mensual ($)</label>
-            <input type="number" id="inp-costo-valor" min="0" />
-          </div>
+          <div class="field"><label>Concepto</label><input type="text" id="inp-costo-nombre" placeholder="Ej: Arriendo" /></div>
+          <div class="field"><label>Valor mensual ($)</label><input type="number" id="inp-costo-valor" min="0" /></div>
           <div class="modal-actions">
             <button class="btn-secondary" id="btn-cancel-costo">Cancelar</button>
             <button class="btn-primary" id="btn-save-costo">Guardar</button>

@@ -60,6 +60,31 @@
             <label>Servicio</label>
             <select id="sel-servicio"><option value="">— Selecciona servicio —</option></select>
           </div>
+          <!-- Servicio libre: visible solo cuando se selecciona "otro-libre" -->
+          <div id="campo-srv-libre" style="display:none">
+            <div class="srv-libre-box">
+              <div class="field">
+                <label>Nombre del servicio / adicional</label>
+                <input type="text" id="inp-srv-libre-nombre" placeholder="Ej: Retoque con diseño especial, Adicional glitter…" />
+              </div>
+              <div class="field">
+                <label>Precio ($)</label>
+                <input type="number" id="inp-srv-libre-precio" min="0" placeholder="0" />
+              </div>
+              <div class="field">
+                <label>% comisión negocio</label>
+                <select id="inp-srv-libre-pct">
+                  <option value="0.6">60% negocio (lashistas)</option>
+                  <option value="0.5" selected>50% negocio (manicuristas)</option>
+                  <option value="custom">Otro %</option>
+                </select>
+              </div>
+              <div class="field" id="campo-srv-libre-custom" style="display:none">
+                <label>% exacto para el negocio</label>
+                <input type="number" id="inp-srv-libre-pct-custom" min="1" max="99" value="60" />
+              </div>
+            </div>
+          </div>
           <div class="field">
             <label>Cantidad</label>
             <input type="number" id="inp-cantidad" min="1" value="1" />
@@ -87,8 +112,8 @@
             <div class="total-row accent"><span>Ganancia bruta negocio</span><span id="tot-negocio">$0</span></div>
           </div>
 
-          <!-- Gastos del día -->
-          <div class="gastos-section" id="gastos-section" style="display:none">
+          <!-- Gastos del día — siempre visible -->
+          <div class="gastos-section" id="gastos-section">
             <div class="gastos-header">
               <h4>💸 Gastos del día</h4>
               <button class="btn-add-gasto" id="btn-add-gasto">+ Agregar gasto</button>
@@ -136,19 +161,10 @@
       <!-- Modal agregar gasto -->
       <div class="modal-bg" id="modal-gasto" style="display:none">
         <div class="modal">
-          <h3>Gasto del día</h3>
+          <h3>💸 Gasto del día</h3>
           <div class="field">
-            <label>Concepto</label>
-            <select id="inp-gasto-tipo">
-              <option value="Compras del día">Compras del día</option>
-              <option value="Transporte">Transporte</option>
-              <option value="Material urgente">Material urgente</option>
-              <option value="Otro">Otro</option>
-            </select>
-          </div>
-          <div class="field" id="campo-gasto-otro" style="display:none">
-            <label>Descripción</label>
-            <input type="text" id="inp-gasto-desc" placeholder="Describe el gasto" />
+            <label>Descripción del gasto</label>
+            <input type="text" id="inp-gasto-desc" placeholder="Ej: Transporte, insumos urgentes, comida…" />
           </div>
           <div class="field">
             <label>Valor ($)</label>

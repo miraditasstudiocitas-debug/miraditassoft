@@ -149,6 +149,14 @@ function populateSelectores() {
     });
     selSrv.appendChild(og);
   });
+  // Opción "Otro" libre
+  const ogOtro = document.createElement('optgroup');
+  ogOtro.label = '— Servicio / Adicional personalizado —';
+  const optLibre = document.createElement('option');
+  optLibre.value = 'otro-libre';
+  optLibre.textContent = '✏ Otro (ingresar nombre y valor)';
+  ogOtro.appendChild(optLibre);
+  selSrv.appendChild(ogOtro);
 }
 
 // ── PREVIEW ───────────────────────────────────────────────────────
@@ -156,6 +164,17 @@ function updatePreview() {
   const srvId = $('sel-servicio').value;
   const qty   = parseInt($('inp-cantidad').value) || 1;
   const box   = $('preview-servicio');
+  const campoLibre = $('campo-srv-libre');
+
+  // Mostrar/ocultar campo libre
+  if (srvId === 'otro-libre') {
+    campoLibre.style.display = 'block';
+    box.style.display = 'none';
+    return;
+  } else {
+    campoLibre.style.display = 'none';
+  }
+
   if (!srvId) { box.style.display = 'none'; return; }
   const srv = servicios.find(s => s.id === srvId);
   if (!srv)  { box.style.display = 'none'; return; }
@@ -169,6 +188,11 @@ function updatePreview() {
 $('sel-servicio').addEventListener('change', updatePreview);
 $('inp-cantidad').addEventListener('input',  updatePreview);
 
+// Listener % personalizado servicio libre
+$('inp-srv-libre-pct').addEventListener('change', () => {
+  $('campo-srv-libre-custom').style.display = $('inp-srv-libre-pct').value === 'custom' ? 'flex' : 'none';
+});
+
 // ── AGREGAR SERVICIO AL DÍA ───────────────────────────────────────
 $('btn-agregar').addEventListener('click', () => {
   const empId = $('sel-empleada').value;
@@ -178,20 +202,44 @@ $('btn-agregar').addEventListener('click', () => {
   if (!srvId) { toast('Selecciona un servicio',  'error'); return; }
 
   const emp = empleadas.find(e => e.id === empId);
-  const srv = servicios.find(s => s.id === srvId);
-  if (!emp || !srv) return;
+  if (!emp) return;
 
-  const total   = srv.precio * qty;
-  const negocio = total * srv.pctNegocio;
-  const empPago = total * (1 - srv.pctNegocio);
+  let srvNombre, precio, pctNegocio;
 
-  diaActual.push({ id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre: srv.nombre, qty, precio: srv.precio, total, negocio, empPago });
+  if (srvId === 'otro-libre') {
+    // Servicio personalizado
+    srvNombre = $('inp-srv-libre-nombre').value.trim();
+    precio    = parseFloat($('inp-srv-libre-precio').value);
+    const pctRaw = $('inp-srv-libre-pct').value;
+    pctNegocio = pctRaw === 'custom'
+      ? parseFloat($('inp-srv-libre-pct-custom').value) / 100
+      : parseFloat(pctRaw);
+    if (!srvNombre) { toast('Escribe el nombre del servicio', 'error'); return; }
+    if (!precio || precio <= 0) { toast('Ingresa un precio válido', 'error'); return; }
+  } else {
+    const srv = servicios.find(s => s.id === srvId);
+    if (!srv) return;
+    srvNombre  = srv.nombre;
+    precio     = srv.precio;
+    pctNegocio = srv.pctNegocio;
+  }
+
+  const total   = precio * qty;
+  const negocio = total * pctNegocio;
+  const empPago = total * (1 - pctNegocio);
+
+  diaActual.push({ id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre, qty, precio, total, negocio, empPago });
   save('ms_dia', diaActual);
 
   $('sel-empleada').value = '';
   $('sel-servicio').value = '';
   $('inp-cantidad').value = 1;
   $('preview-servicio').style.display = 'none';
+  $('campo-srv-libre').style.display  = 'none';
+  $('inp-srv-libre-nombre').value = '';
+  $('inp-srv-libre-precio').value = '';
+  $('inp-srv-libre-pct').value = '0.5';
+  $('campo-srv-libre-custom').style.display = 'none';
   renderDiaActual();
   setEquilibrioUI();
   toast('Servicio agregado ✓');
@@ -208,9 +256,9 @@ function renderDiaActual() {
   if (!diaActual.length) {
     container.innerHTML = '<div class="empty-state">No hay servicios registrados aún</div>';
     totalesEl.style.display = 'none';
-    gastosSec.style.display = 'none';
     paymentEl.style.display = 'none';
     btnCerrar.style.display = 'none';
+    renderGastosHoy(); // siempre renderizar gastos
     return;
   }
 
@@ -246,7 +294,6 @@ function renderDiaActual() {
   $('tot-empleadas').textContent = fmt(totalEmpleada);
 
   totalesEl.style.display = 'block';
-  gastosSec.style.display = 'block';
   paymentEl.style.display = 'block';
   btnCerrar.style.display = 'block';
 
@@ -289,26 +336,21 @@ function renderGastosHoy() {
   realVal.className   = 'ganancia-real-num' + (gananciaReal < 0 ? ' negativa' : '');
 }
 
-// Modal gastos
-$('inp-gasto-tipo').addEventListener('change', () => {
-  $('campo-gasto-otro').style.display = $('inp-gasto-tipo').value === 'Otro' ? 'flex' : 'none';
-});
-
+// Modal gastos - descripción libre
 $('btn-add-gasto').addEventListener('click', () => {
-  $('inp-gasto-tipo').value  = 'Compras del día';
   $('inp-gasto-valor').value = '';
   $('inp-gasto-desc').value  = '';
-  $('campo-gasto-otro').style.display = 'none';
   $('modal-gasto').style.display = 'flex';
+  setTimeout(() => $('inp-gasto-desc').focus(), 100);
 });
 
 $('btn-cancel-gasto').addEventListener('click', () => { $('modal-gasto').style.display = 'none'; });
 
 $('btn-save-gasto').addEventListener('click', () => {
-  const tipo  = $('inp-gasto-tipo').value;
+  const desc  = $('inp-gasto-desc').value.trim();
   const valor = parseFloat($('inp-gasto-valor').value);
+  if (!desc)  { toast('Describe el gasto', 'error'); return; }
   if (!valor || valor <= 0) { toast('Ingresa un valor válido', 'error'); return; }
-  const desc = tipo === 'Otro' ? ($('inp-gasto-desc').value.trim() || 'Otro') : tipo;
   gastosHoy.push({ id: uid(), concepto: desc, valor });
   save('ms_gastos_hoy', gastosHoy);
   $('modal-gasto').style.display = 'none';

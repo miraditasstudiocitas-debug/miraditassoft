@@ -391,6 +391,17 @@ h2, h3 { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
 .toast.success { border-left: 4px solid var(--green); }
 .toast.error   { border-left: 4px solid #c0392b; }
 
+/* ===== SERVICIO LIBRE ===== */
+.srv-libre-box {
+  background: var(--rose-pale);
+  border: 1.5px dashed var(--rose-mid);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  animation: fadeIn .2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:none; } }
+
 /* ===== SCROLLBAR ===== */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

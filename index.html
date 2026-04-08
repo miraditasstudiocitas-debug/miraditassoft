@@ -95,6 +95,15 @@
             <div class="preview-row accent"><span>Para el negocio</span><span id="prev-spa">—</span></div>
             <div class="preview-row muted"><span>Para la empleada</span><span id="prev-emp">—</span></div>
           </div>
+          <!-- Método de pago por servicio -->
+          <div class="field">
+            <label>Método de pago</label>
+            <div class="pago-toggle" id="pago-toggle">
+              <button type="button" class="pago-btn active" data-pago="efectivo">💵 Efectivo</button>
+              <button type="button" class="pago-btn" data-pago="transferencia">📲 Transferencia</button>
+              <button type="button" class="pago-btn" data-pago="mixto">🔀 Mixto</button>
+            </div>
+          </div>
           <button class="btn-primary" id="btn-agregar">+ Agregar al cierre</button>
         </div>
 
@@ -129,12 +138,22 @@
             </div>
           </div>
 
-          <!-- Forma de pago -->
+          <!-- Resumen de pagos del día (calculado automáticamente) -->
           <div class="payment-section" id="payment-section" style="display:none">
-            <h4>Forma de pago</h4>
-            <div class="payment-row">
-              <div class="field half"><label>Efectivo</label><input type="number" id="inp-efectivo" min="0" value="0" /></div>
-              <div class="field half"><label>Transferencia</label><input type="number" id="inp-transfer" min="0" value="0" /></div>
+            <h4>💳 Resumen de pagos</h4>
+            <div class="pago-resumen-grid" id="pago-resumen-grid">
+              <div class="pago-resumen-item efectivo">
+                <span class="pago-resumen-label">💵 Efectivo</span>
+                <span class="pago-resumen-val" id="res-efectivo">$0</span>
+              </div>
+              <div class="pago-resumen-item transfer">
+                <span class="pago-resumen-label">📲 Transferencia</span>
+                <span class="pago-resumen-val" id="res-transfer">$0</span>
+              </div>
+              <div class="pago-resumen-item mixto">
+                <span class="pago-resumen-label">🔀 Mixto</span>
+                <span class="pago-resumen-val" id="res-mixto">$0</span>
+              </div>
             </div>
           </div>
 

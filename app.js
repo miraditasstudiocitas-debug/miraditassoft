@@ -159,6 +159,16 @@ function populateSelectores() {
   selSrv.appendChild(ogOtro);
 }
 
+// ── TOGGLE MÉTODO DE PAGO ─────────────────────────────────────────
+let pagoSeleccionado = 'efectivo';
+document.querySelectorAll('.pago-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.pago-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    pagoSeleccionado = btn.dataset.pago;
+  });
+});
+
 // ── PREVIEW ───────────────────────────────────────────────────────
 function updatePreview() {
   const srvId = $('sel-servicio').value;
@@ -228,7 +238,7 @@ $('btn-agregar').addEventListener('click', () => {
   const negocio = total * pctNegocio;
   const empPago = total * (1 - pctNegocio);
 
-  diaActual.push({ id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre, qty, precio, total, negocio, empPago });
+  diaActual.push({ id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre, qty, precio, total, negocio, empPago, tipoPago: pagoSeleccionado });
   save('ms_dia', diaActual);
 
   $('sel-empleada').value = '';
@@ -240,6 +250,9 @@ $('btn-agregar').addEventListener('click', () => {
   $('inp-srv-libre-precio').value = '';
   $('inp-srv-libre-pct').value = '0.5';
   $('campo-srv-libre-custom').style.display = 'none';
+  // Resetear toggle de pago a efectivo
+  pagoSeleccionado = 'efectivo';
+  document.querySelectorAll('.pago-btn').forEach(b => b.classList.toggle('active', b.dataset.pago === 'efectivo'));
   renderDiaActual();
   setEquilibrioUI();
   toast('Servicio agregado ✓');
@@ -262,19 +275,25 @@ function renderDiaActual() {
     return;
   }
 
-  container.innerHTML = diaActual.map(item => `
+  container.innerHTML = diaActual.map(item => {
+    const pagoBadge = item.tipoPago === 'efectivo'
+      ? '<span class="badge badge-efectivo">💵 Efectivo</span>'
+      : item.tipoPago === 'transferencia'
+        ? '<span class="badge badge-transfer">📲 Transfer</span>'
+        : '<span class="badge badge-mixto">🔀 Mixto</span>';
+    return `
     <div class="day-item">
       <div class="day-item-info">
         <div class="day-item-name">${item.srvNombre}</div>
-        <div class="day-item-sub">${item.empNombre} · ×${item.qty}</div>
+        <div class="day-item-sub">${item.empNombre} · ×${item.qty} · ${pagoBadge}</div>
       </div>
       <div class="day-item-amounts">
         <div class="day-item-total">${fmt(item.total)}</div>
         <div class="day-item-split">Negocio: ${fmt(item.negocio)}</div>
       </div>
       <button class="day-item-del" data-id="${item.id}">✕</button>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   container.querySelectorAll('.day-item-del').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -292,6 +311,14 @@ function renderDiaActual() {
   $('tot-vendido').textContent   = fmt(totalVendido);
   $('tot-negocio').textContent   = fmt(totalNegocio);
   $('tot-empleadas').textContent = fmt(totalEmpleada);
+
+  // Resumen de pagos por método
+  const sumEfectivo    = diaActual.filter(i => i.tipoPago === 'efectivo').reduce((s, i) => s + i.total, 0);
+  const sumTransfer    = diaActual.filter(i => i.tipoPago === 'transferencia').reduce((s, i) => s + i.total, 0);
+  const sumMixto       = diaActual.filter(i => i.tipoPago === 'mixto').reduce((s, i) => s + i.total, 0);
+  $('res-efectivo').textContent = fmt(sumEfectivo);
+  $('res-transfer').textContent = fmt(sumTransfer);
+  $('res-mixto').textContent    = fmt(sumMixto);
 
   totalesEl.style.display = 'block';
   paymentEl.style.display = 'block';
@@ -362,17 +389,19 @@ $('btn-save-gasto').addEventListener('click', () => {
 $('btn-cerrar').addEventListener('click', () => {
   if (!diaActual.length) { toast('No hay servicios para cerrar', 'error'); return; }
 
-  const efectivo     = parseFloat($('inp-efectivo').value) || 0;
-  const transfer     = parseFloat($('inp-transfer').value) || 0;
   const totalVend    = diaActual.reduce((s, i) => s + i.total,   0);
   const totalNeg     = diaActual.reduce((s, i) => s + i.negocio, 0);
   const totalEmp     = diaActual.reduce((s, i) => s + i.empPago, 0);
   const totalGastos  = totalGastosHoy();
   const gananciaReal = totalNeg - totalGastos;
 
+  const efectivo   = diaActual.filter(i => i.tipoPago === 'efectivo').reduce((s, i) => s + i.total, 0);
+  const transfer   = diaActual.filter(i => i.tipoPago === 'transferencia').reduce((s, i) => s + i.total, 0);
+  const mixto      = diaActual.filter(i => i.tipoPago === 'mixto').reduce((s, i) => s + i.total, 0);
+
   let tipoPago = 'mixto';
-  if (efectivo > 0 && transfer === 0) tipoPago = 'efectivo';
-  else if (transfer > 0 && efectivo === 0) tipoPago = 'transferencia';
+  if (efectivo > 0 && transfer === 0 && mixto === 0) tipoPago = 'efectivo';
+  else if (transfer > 0 && efectivo === 0 && mixto === 0) tipoPago = 'transferencia';
 
   const cierre = {
     id: uid(),
@@ -384,7 +413,7 @@ $('btn-cerrar').addEventListener('click', () => {
     totalEmpleadas: totalEmp,
     totalGastos,
     gananciaReal,
-    efectivo, transfer, tipoPago,
+    efectivo, transfer, mixto, tipoPago,
   };
 
   historial.push(cierre);
@@ -394,9 +423,6 @@ $('btn-cerrar').addEventListener('click', () => {
   gastosHoy = [];
   save('ms_dia', diaActual);
   save('ms_gastos_hoy', gastosHoy);
-
-  $('inp-efectivo').value = 0;
-  $('inp-transfer').value = 0;
 
   renderDiaActual();
   setEquilibrioUI();

@@ -391,6 +391,43 @@ h2, h3 { font-family: 'Cormorant Garamond', serif; font-weight: 600; }
 .toast.success { border-left: 4px solid var(--green); }
 .toast.error   { border-left: 4px solid #c0392b; }
 
+/* ===== TOGGLE MÉTODO DE PAGO ===== */
+.pago-toggle {
+  display: flex; gap: .5rem; flex-wrap: wrap;
+}
+.pago-btn {
+  flex: 1; padding: .5rem .6rem;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--cream);
+  color: var(--text-muted);
+  font-family: 'DM Sans', sans-serif;
+  font-size: .82rem; font-weight: 500;
+  cursor: pointer; transition: all .18s;
+  white-space: nowrap;
+}
+.pago-btn:hover { border-color: var(--rose-mid); color: var(--rose); }
+.pago-btn.active[data-pago="efectivo"]     { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+.pago-btn.active[data-pago="transferencia"]{ background: var(--green-pale); border-color: var(--green); color: var(--green); }
+.pago-btn.active[data-pago="mixto"]        { background: var(--rose-pale); border-color: var(--rose-mid); color: var(--rose); }
+
+/* ===== RESUMEN DE PAGOS ===== */
+.pago-resumen-grid {
+  display: flex; gap: .75rem; flex-wrap: wrap; margin-top: .5rem;
+}
+.pago-resumen-item {
+  flex: 1; min-width: 90px;
+  border-radius: var(--radius-sm);
+  padding: .6rem .75rem;
+  display: flex; flex-direction: column; gap: .2rem;
+  border: 1px solid var(--border);
+}
+.pago-resumen-item.efectivo  { background: #fef3c7; border-color: #f59e0b; }
+.pago-resumen-item.transfer  { background: var(--green-pale); border-color: #86efac; }
+.pago-resumen-item.mixto     { background: var(--rose-pale); border-color: var(--rose-mid); }
+.pago-resumen-label { font-size: .72rem; font-weight: 500; color: var(--text-muted); }
+.pago-resumen-val   { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 600; color: var(--text); }
+
 /* ===== SERVICIO LIBRE ===== */
 .srv-libre-box {
   background: var(--rose-pale);

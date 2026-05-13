@@ -1,5 +1,5 @@
 /* =============================================
-   MIRADITAS STUDIO — app.js  v2
+   MIRADITAS STUDIO — app.js  v3 MEJORADA
    ============================================= */
 
 // ── DATOS INICIALES ──────────────────────────────────────────────
@@ -51,9 +51,9 @@ function save(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 let costos    = load('ms_costos',    DEFAULT_COSTOS);
 let servicios = load('ms_servicios', DEFAULT_SERVICIOS);
 let empleadas = load('ms_empleadas', DEFAULT_EMPLEADAS);
-let historial = load('ms_historial', []);   // cierres completos
-let diaActual = load('ms_dia',       []);   // items servicios del día en curso
-let gastosHoy = load('ms_gastos_hoy', []);  // gastos del día en curso
+let historial = load('ms_historial', []);
+let diaActual = load('ms_dia',       []);
+let gastosHoy = load('ms_gastos_hoy', []);
 let editEmpId = null, editSrvId = null, editCostoId = null;
 
 // ── UTILIDADES ────────────────────────────────────────────────────
@@ -74,6 +74,26 @@ function gananciaBrutaMes() { return historial.reduce((s, c) => s + c.totalNegoc
 function gastosExtraMes()   { return historial.reduce((s, c) => s + (c.totalGastos || 0), 0); }
 function gananciaRealMes()  { return gananciaBrutaMes() - gastosExtraMes(); }
 function totalGastosHoy()   { return gastosHoy.reduce((s, g) => s + g.valor, 0); }
+
+// ── OBTENER META MENSUAL (SOLO MES ACTUAL) ──────────────────────
+function getMetaMensualActual() {
+  const hoy = new Date();
+  const mesActual = hoy.getMonth();
+  const anoActual = hoy.getFullYear();
+  
+  // Filtrar cierres del mes actual
+  const cierresMesActual = historial.filter(c => {
+    const fecha = new Date(c.fecha.split('/').reverse().join('-'));
+    return fecha.getMonth() === mesActual && fecha.getFullYear() === anoActual;
+  });
+  
+  return {
+    mes: hoy.toLocaleString('es-CO', { month: 'long', year: 'numeric' }),
+    ventasActual: cierresMesActual.reduce((s, c) => s + c.totalVendido, 0),
+    gananciaActual: cierresMesActual.reduce((s, c) => s + c.totalNegocio, 0),
+    cierresMesActual,
+  };
+}
 
 // ── ALERTAS ───────────────────────────────────────────────────────
 function renderAlertas() {
@@ -149,7 +169,6 @@ function populateSelectores() {
     });
     selSrv.appendChild(og);
   });
-  // Opción "Otro" libre
   const ogOtro = document.createElement('optgroup');
   ogOtro.label = '— Servicio / Adicional personalizado —';
   const optLibre = document.createElement('option');
@@ -161,12 +180,41 @@ function populateSelectores() {
 
 // ── TOGGLE MÉTODO DE PAGO ─────────────────────────────────────────
 let pagoSeleccionado = 'efectivo';
+let montoPago = { efectivo: 0, transferencia: 0 };
+
 document.querySelectorAll('.pago-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.pago-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     pagoSeleccionado = btn.dataset.pago;
+    
+    // Si es mixto, mostrar modal de desglose
+    if (pagoSeleccionado === 'mixto') {
+      $('modal-pago-mixto').style.display = 'flex';
+    }
   });
+});
+
+// ── MODAL PAGO MIXTO ──────────────────────────────────────────────
+$('btn-confirm-mixto').addEventListener('click', () => {
+  const efectivo = parseFloat($('inp-mixto-efectivo').value) || 0;
+  const transfer = parseFloat($('inp-mixto-transfer').value) || 0;
+  
+  if (efectivo <= 0 && transfer <= 0) {
+    toast('Ingresa al menos un monto', 'error');
+    return;
+  }
+  
+  montoPago.efectivo = efectivo;
+  montoPago.transferencia = transfer;
+  $('modal-pago-mixto').style.display = 'none';
+  toast('Desglose de pago registrado ✓');
+});
+
+$('btn-cancel-mixto').addEventListener('click', () => {
+  $('modal-pago-mixto').style.display = 'none';
+  pagoSeleccionado = 'efectivo';
+  document.querySelectorAll('.pago-btn').forEach(b => b.classList.toggle('active', b.dataset.pago === 'efectivo'));
 });
 
 // ── PREVIEW ───────────────────────────────────────────────────────
@@ -176,7 +224,6 @@ function updatePreview() {
   const box   = $('preview-servicio');
   const campoLibre = $('campo-srv-libre');
 
-  // Mostrar/ocultar campo libre
   if (srvId === 'otro-libre') {
     campoLibre.style.display = 'block';
     box.style.display = 'none';
@@ -195,10 +242,10 @@ function updatePreview() {
   $('prev-emp').textContent    = fmt(total * (1 - srv.pctNegocio));
   box.style.display = 'block';
 }
+
 $('sel-servicio').addEventListener('change', updatePreview);
 $('inp-cantidad').addEventListener('input',  updatePreview);
 
-// Listener % personalizado servicio libre
 $('inp-srv-libre-pct').addEventListener('change', () => {
   $('campo-srv-libre-custom').style.display = $('inp-srv-libre-pct').value === 'custom' ? 'flex' : 'none';
 });
@@ -208,6 +255,7 @@ $('btn-agregar').addEventListener('click', () => {
   const empId = $('sel-empleada').value;
   const srvId = $('sel-servicio').value;
   const qty   = parseInt($('inp-cantidad').value) || 1;
+  
   if (!empId) { toast('Selecciona una empleada', 'error'); return; }
   if (!srvId) { toast('Selecciona un servicio',  'error'); return; }
 
@@ -217,7 +265,6 @@ $('btn-agregar').addEventListener('click', () => {
   let srvNombre, precio, pctNegocio;
 
   if (srvId === 'otro-libre') {
-    // Servicio personalizado
     srvNombre = $('inp-srv-libre-nombre').value.trim();
     precio    = parseFloat($('inp-srv-libre-precio').value);
     const pctRaw = $('inp-srv-libre-pct').value;
@@ -238,7 +285,18 @@ $('btn-agregar').addEventListener('click', () => {
   const negocio = total * pctNegocio;
   const empPago = total * (1 - pctNegocio);
 
-  diaActual.push({ id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre, qty, precio, total, negocio, empPago, tipoPago: pagoSeleccionado });
+  // Desglose de pago
+  let pagoDesglose = { efectivo: 0, transferencia: 0 };
+  if (pagoSeleccionado === 'mixto') {
+    pagoDesglose = { ...montoPago };
+  } else {
+    pagoDesglose[pagoSeleccionado === 'efectivo' ? 'efectivo' : 'transferencia'] = total;
+  }
+
+  diaActual.push({ 
+    id: uid(), empId, empNombre: emp.nombre, srvId, srvNombre, qty, precio, 
+    total, negocio, empPago, tipoPago: pagoSeleccionado, pagoDesglose 
+  });
   save('ms_dia', diaActual);
 
   $('sel-empleada').value = '';
@@ -250,9 +308,11 @@ $('btn-agregar').addEventListener('click', () => {
   $('inp-srv-libre-precio').value = '';
   $('inp-srv-libre-pct').value = '0.5';
   $('campo-srv-libre-custom').style.display = 'none';
-  // Resetear toggle de pago a efectivo
+  
   pagoSeleccionado = 'efectivo';
+  montoPago = { efectivo: 0, transferencia: 0 };
   document.querySelectorAll('.pago-btn').forEach(b => b.classList.toggle('active', b.dataset.pago === 'efectivo'));
+  
   renderDiaActual();
   setEquilibrioUI();
   toast('Servicio agregado ✓');
@@ -262,7 +322,6 @@ $('btn-agregar').addEventListener('click', () => {
 function renderDiaActual() {
   const container = $('day-items');
   const totalesEl = $('day-totals');
-  const gastosSec = $('gastos-section');
   const paymentEl = $('payment-section');
   const btnCerrar = $('btn-cerrar');
 
@@ -271,7 +330,7 @@ function renderDiaActual() {
     totalesEl.style.display = 'none';
     paymentEl.style.display = 'none';
     btnCerrar.style.display = 'none';
-    renderGastosHoy(); // siempre renderizar gastos
+    renderGastosHoy();
     return;
   }
 
@@ -280,7 +339,8 @@ function renderDiaActual() {
       ? '<span class="badge badge-efectivo">💵 Efectivo</span>'
       : item.tipoPago === 'transferencia'
         ? '<span class="badge badge-transfer">📲 Transfer</span>'
-        : '<span class="badge badge-mixto">🔀 Mixto</span>';
+        : `<span class="badge badge-mixto">🔀 ${fmt(item.pagoDesglose.efectivo)} + ${fmt(item.pagoDesglose.transferencia)}</span>`;
+    
     return `
     <div class="day-item">
       <div class="day-item-info">
@@ -312,13 +372,19 @@ function renderDiaActual() {
   $('tot-negocio').textContent   = fmt(totalNegocio);
   $('tot-empleadas').textContent = fmt(totalEmpleada);
 
-  // Resumen de pagos por método
-  const sumEfectivo    = diaActual.filter(i => i.tipoPago === 'efectivo').reduce((s, i) => s + i.total, 0);
-  const sumTransfer    = diaActual.filter(i => i.tipoPago === 'transferencia').reduce((s, i) => s + i.total, 0);
-  const sumMixto       = diaActual.filter(i => i.tipoPago === 'mixto').reduce((s, i) => s + i.total, 0);
+  // Resumen de pagos (incluyendo mixto)
+  let sumEfectivo = 0, sumTransfer = 0;
+  diaActual.forEach(i => {
+    if (i.tipoPago === 'efectivo') sumEfectivo += i.total;
+    else if (i.tipoPago === 'transferencia') sumTransfer += i.total;
+    else if (i.tipoPago === 'mixto') {
+      sumEfectivo += i.pagoDesglose.efectivo;
+      sumTransfer += i.pagoDesglose.transferencia;
+    }
+  });
+  
   $('res-efectivo').textContent = fmt(sumEfectivo);
   $('res-transfer').textContent = fmt(sumTransfer);
-  $('res-mixto').textContent    = fmt(sumMixto);
 
   totalesEl.style.display = 'block';
   paymentEl.style.display = 'block';
@@ -331,7 +397,6 @@ function renderDiaActual() {
 function renderGastosHoy() {
   const list     = $('gastos-list');
   const totalRow = $('gastos-total-row');
-  const realBox  = $('ganancia-real-box');
   const realVal  = $('ganancia-real-val');
 
   if (!gastosHoy.length) {
@@ -356,14 +421,13 @@ function renderGastosHoy() {
     totalRow.style.display = 'flex';
   }
 
-  // Ganancia REAL del día
   const totalNegocio  = diaActual.reduce((s, i) => s + i.negocio, 0);
   const gananciaReal  = totalNegocio - totalGastosHoy();
   realVal.textContent = fmt(gananciaReal);
   realVal.className   = 'ganancia-real-num' + (gananciaReal < 0 ? ' negativa' : '');
 }
 
-// Modal gastos - descripción libre
+// Modal gastos
 $('btn-add-gasto').addEventListener('click', () => {
   $('inp-gasto-valor').value = '';
   $('inp-gasto-desc').value  = '';
@@ -395,13 +459,20 @@ $('btn-cerrar').addEventListener('click', () => {
   const totalGastos  = totalGastosHoy();
   const gananciaReal = totalNeg - totalGastos;
 
-  const efectivo   = diaActual.filter(i => i.tipoPago === 'efectivo').reduce((s, i) => s + i.total, 0);
-  const transfer   = diaActual.filter(i => i.tipoPago === 'transferencia').reduce((s, i) => s + i.total, 0);
-  const mixto      = diaActual.filter(i => i.tipoPago === 'mixto').reduce((s, i) => s + i.total, 0);
+  // Desglose por método de pago
+  let efectivoTotal = 0, transferTotal = 0;
+  diaActual.forEach(i => {
+    if (i.tipoPago === 'efectivo') efectivoTotal += i.total;
+    else if (i.tipoPago === 'transferencia') transferTotal += i.total;
+    else if (i.tipoPago === 'mixto') {
+      efectivoTotal += i.pagoDesglose.efectivo;
+      transferTotal += i.pagoDesglose.transferencia;
+    }
+  });
 
   let tipoPago = 'mixto';
-  if (efectivo > 0 && transfer === 0 && mixto === 0) tipoPago = 'efectivo';
-  else if (transfer > 0 && efectivo === 0 && mixto === 0) tipoPago = 'transferencia';
+  if (efectivoTotal > 0 && transferTotal === 0) tipoPago = 'efectivo';
+  else if (transferTotal > 0 && efectivoTotal === 0) tipoPago = 'transferencia';
 
   const cierre = {
     id: uid(),
@@ -413,7 +484,9 @@ $('btn-cerrar').addEventListener('click', () => {
     totalEmpleadas: totalEmp,
     totalGastos,
     gananciaReal,
-    efectivo, transfer, mixto, tipoPago,
+    efectivo: efectivoTotal,
+    transfer: transferTotal,
+    tipoPago,
   };
 
   historial.push(cierre);
@@ -421,6 +494,7 @@ $('btn-cerrar').addEventListener('click', () => {
 
   diaActual = [];
   gastosHoy = [];
+  montoPago = { efectivo: 0, transferencia: 0 };
   save('ms_dia', diaActual);
   save('ms_gastos_hoy', gastosHoy);
 
@@ -430,57 +504,66 @@ $('btn-cerrar').addEventListener('click', () => {
   toast('Día cerrado exitosamente 🌸');
 });
 
-// ── EQUILIBRIO ────────────────────────────────────────────────────
+// ── EQUILIBRIO (META MENSUAL) ────────────────────────────────────
 function setEquilibrioUI() {
-  const meta   = totalCostos();
+  const meta = totalCostos();
+  const metaActual = getMetaMensualActual();
+  
   const brutaAcum = gananciaBrutaMes();
   const gastosAcum = gastosExtraMes();
   const realAcum  = gananciaRealMes();
-  const pct    = Math.min((brutaAcum / meta) * 100, 100);
-  const falta  = Math.max(meta - brutaAcum, 0);
+  
+  // Para gráfica: usar ganancia actual del mes
+  const gananciaParaMetaEsta = metaActual.gananciaActual;
+  const pct = Math.min((gananciaParaMetaEsta / meta) * 100, 100);
+  const falta = Math.max(meta - gananciaParaMetaEsta, 0);
 
-  // mini bar
   const fill = $('eq-bar-fill');
   if (fill) {
     fill.style.width = pct + '%';
-    fill.classList.toggle('over', brutaAcum >= meta);
+    fill.classList.toggle('over', gananciaParaMetaEsta >= meta);
     $('eq-pct-txt').textContent = pct.toFixed(1) + '%';
-    $('eq-acum').textContent    = fmt(brutaAcum);
+    $('eq-acum').textContent    = fmt(gananciaParaMetaEsta);
     $('eq-meta').textContent    = fmt(meta);
     $('eq-falta').textContent   = fmt(falta);
   }
 
-  // full tab
+  // Full tab
   if ($('eq-costos')) {
     $('eq-costos').textContent      = fmt(meta);
-    $('eq-ganancia').textContent    = fmt(brutaAcum);
+    $('eq-ganancia').textContent    = fmt(gananciaParaMetaEsta);
     $('eq-gastos-extra').textContent = fmt(gastosAcum);
 
-    const util = realAcum - meta;
+    const util = gananciaParaMetaEsta - meta;
     $('eq-utilidad').textContent = util >= 0 ? fmt(util) : '-' + fmt(Math.abs(util));
     $('eq-utilidad').style.color = util >= 0 ? 'var(--green)' : 'var(--rose)';
 
     const hoy      = new Date();
     const diasMes  = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).getDate();
     const diasRest = diasMes - hoy.getDate() + 1;
-    if (diasRest > 0 && brutaAcum < meta) {
+    
+    if (diasRest > 0 && gananciaParaMetaEsta < meta) {
       $('eq-meta-diaria').textContent = fmt(falta / diasRest) + '/día';
-    } else if (brutaAcum >= meta) {
+    } else if (gananciaParaMetaEsta >= meta) {
       $('eq-meta-diaria').textContent = '✓ Meta alcanzada';
     } else {
       $('eq-meta-diaria').textContent = '—';
     }
 
+    // Mostrar mes actual en equilibrio
+    $('eq-mes-actual').textContent = metaActual.mes.toUpperCase();
+
     const fillBig = $('eq-bar-big');
     if (fillBig) {
       fillBig.style.width = pct + '%';
-      fillBig.classList.toggle('over', brutaAcum >= meta);
+      fillBig.classList.toggle('over', gananciaParaMetaEsta >= meta);
       $('eq-bar-label').textContent = pct.toFixed(0) + '%';
     }
-    $('eq-status').textContent = brutaAcum >= meta
+    
+    $('eq-status').textContent = gananciaParaMetaEsta >= meta
       ? '✓ Punto de equilibrio alcanzado este mes 🎉'
       : `Faltan ${fmt(falta)} para cubrir costos fijos`;
-    $('eq-status').style.color = brutaAcum >= meta ? 'var(--green)' : 'var(--text-muted)';
+    $('eq-status').style.color = gananciaParaMetaEsta >= meta ? 'var(--green)' : 'var(--text-muted)';
 
     renderChartDias();
   }
@@ -490,33 +573,36 @@ function setEquilibrioUI() {
 function renderHistorial() {
   const tbody = $('hist-body');
   if (!historial.length) {
-    tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Sin registros aún</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">Sin registros aún</td></tr>';
     return;
   }
   const rows = [];
   historial.forEach(c => {
     c.items.forEach(item => {
-      const badge = c.tipoPago === 'efectivo'
-        ? '<span class="badge badge-efectivo">Efectivo</span>'
-        : c.tipoPago === 'transferencia'
-          ? '<span class="badge badge-transfer">Transferencia</span>'
-          : '<span class="badge badge-mixto">Mixto</span>';
+      let pagoBadge;
+      if (item.tipoPago === 'mixto') {
+        pagoBadge = `<span class="badge badge-mixto">Efectivo: ${fmt(item.pagoDesglose.efectivo)} | Transfer: ${fmt(item.pagoDesglose.transferencia)}</span>`;
+      } else {
+        pagoBadge = item.tipoPago === 'efectivo'
+          ? '<span class="badge badge-efectivo">Efectivo</span>'
+          : '<span class="badge badge-transfer">Transferencia</span>';
+      }
       rows.push(`<tr>
         <td>${c.fecha}</td><td>${item.empNombre}</td><td>${item.srvNombre}</td>
         <td>${item.qty}</td><td>${fmt(item.total)}</td>
-        <td>${fmt(item.negocio)}</td><td>${fmt(item.empPago)}</td><td>${badge}</td>
+        <td>${fmt(item.negocio)}</td><td>${fmt(item.empPago)}</td><td>${pagoBadge}</td>
       </tr>`);
     });
   });
   tbody.innerHTML = rows.join('');
 }
 
-// Vista cierres de caja
 $('btn-ver-cierres').addEventListener('click', () => {
   $('vista-servicios').style.display = 'none';
   $('vista-cierres').style.display   = 'block';
   renderCierresCaja();
 });
+
 $('btn-volver-servicios').addEventListener('click', () => {
   $('vista-servicios').style.display = 'block';
   $('vista-cierres').style.display   = 'none';
@@ -571,23 +657,26 @@ function renderCierresCaja() {
   container.querySelectorAll('.btn-copy').forEach(btn => {
     btn.addEventListener('click', () => {
       const texto = decodeURIComponent(btn.dataset.texto);
-      navigator.clipboard.writeText(texto).then(() => toast('Cierre copiado al portapapeles ✓')).catch(() => toast('No se pudo copiar', 'error'));
+      navigator.clipboard.writeText(texto).then(() => toast('Cierre copiado ✓')).catch(() => toast('No se pudo copiar', 'error'));
     });
   });
 }
 
-// Exportar CSV
 $('btn-export-csv').addEventListener('click', () => {
   if (!historial.length) { toast('Sin datos para exportar', 'error'); return; }
-  const lines = ['Fecha,Empleada,Servicio,Cantidad,Total Venta,Negocio,Empleada,Pago,Gastos Día,Ganancia Real'];
+  const lines = ['Fecha,Empleada,Servicio,Cantidad,Total,Negocio,Empleada,Efectivo,Transferencia'];
   historial.forEach(c => {
     c.items.forEach(i => {
-      lines.push([c.fecha, i.empNombre, i.srvNombre, i.qty, i.total, i.negocio, i.empPago, c.tipoPago, c.totalGastos || 0, c.gananciaReal != null ? c.gananciaReal : c.totalNegocio].join(','));
+      lines.push([c.fecha, i.empNombre, i.srvNombre, i.qty, i.total, i.negocio, i.empPago, 
+                  i.pagoDesglose?.efectivo || 0, i.pagoDesglose?.transferencia || 0].join(','));
     });
   });
   const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
   const url  = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'miraditas_historial.csv'; a.click();
+  const a = document.createElement('a'); 
+  a.href = url; 
+  a.download = 'miraditas_historial.csv'; 
+  a.click();
   URL.revokeObjectURL(url);
   toast('CSV descargado ✓');
 });
@@ -604,14 +693,20 @@ function renderDashboard() {
     return;
   }
 
-  const totalVend  = historial.reduce((s, c) => s + c.totalVendido, 0);
-  const brutaAcum  = gananciaBrutaMes();
-  const gastosAcum = gastosExtraMes();
-  const realAcum   = gananciaRealMes();
-  const efectivoT  = historial.reduce((s, c) => s + (c.efectivo  || 0), 0);
-  const transferT  = historial.reduce((s, c) => s + (c.transfer  || 0), 0);
-  const dias       = historial.length;
-  const promedio   = dias > 0 ? totalVend / dias : 0;
+  const metaActual = getMetaMensualActual();
+  const totalVend  = metaActual.ventasActual;
+  const brutaAcum  = metaActual.gananciaActual;
+  const gastosAcum = metaActual.cierresMesActual.reduce((s, c) => s + (c.totalGastos || 0), 0);
+  const realAcum   = brutaAcum - gastosAcum;
+  
+  let efectivoT = 0, transferT = 0;
+  metaActual.cierresMesActual.forEach(c => {
+    efectivoT += c.efectivo || 0;
+    transferT += c.transfer || 0;
+  });
+  
+  const dias = metaActual.cierresMesActual.length;
+  const promedio = dias > 0 ? totalVend / dias : 0;
 
   $('dash-total-vendido').textContent  = fmt(totalVend);
   $('dash-ganancia-bruta').textContent = fmt(brutaAcum);
@@ -624,7 +719,7 @@ function renderDashboard() {
 
   // Ranking empleadas
   const porEmp = {};
-  historial.forEach(c => {
+  metaActual.cierresMesActual.forEach(c => {
     c.items.forEach(i => {
       if (!porEmp[i.empNombre]) porEmp[i.empNombre] = { ventas: 0, negocio: 0, servicios: 0 };
       porEmp[i.empNombre].ventas   += i.total;
@@ -646,7 +741,7 @@ function renderDashboard() {
 
   // Ranking servicios
   const porSrv = {};
-  historial.forEach(c => {
+  metaActual.cierresMesActual.forEach(c => {
     c.items.forEach(i => {
       if (!porSrv[i.srvNombre]) porSrv[i.srvNombre] = { qty: 0, total: 0 };
       porSrv[i.srvNombre].qty   += i.qty;
@@ -665,8 +760,7 @@ function renderDashboard() {
     </div>`).join('');
 
   // Barras métodos de pago
-  const maxPago = Math.max(efectivoT, transferT, 1);
-  const mixtoT  = historial.filter(c => c.tipoPago === 'mixto').reduce((s, c) => s + c.totalVendido, 0);
+  const mixtoT  = metaActual.cierresMesActual.filter(c => c.tipoPago === 'mixto').reduce((s, c) => s + c.totalVendido, 0);
   $('pago-bars').innerHTML = [
     { label: '💵 Efectivo',       val: efectivoT, cls: 'efectivo' },
     { label: '📲 Transferencia',  val: transferT, cls: 'transfer' },
@@ -680,13 +774,18 @@ function renderDashboard() {
       <span class="pago-bar-val">${fmt(p.val)}</span>
     </div>`).join('');
 
-  // Chart días
-  renderChartGeneric('chart-dash-dias', historial.map(c => ({ label: c.fecha.split('/').slice(0,2).join('/'), val: c.totalVendido })));
+  renderChartGeneric('chart-dash-dias', metaActual.cierresMesActual.map(c => ({ 
+    label: c.fecha.split('/').slice(0,2).join('/'), 
+    val: c.totalVendido 
+  })));
 }
 
-// ── CHART ─────────────────────────────────────────────────────────
 function renderChartDias() {
-  const entries = historial.map(c => ({ label: c.fecha.split('/').slice(0,2).join('/'), val: c.totalNegocio }));
+  const metaActual = getMetaMensualActual();
+  const entries = metaActual.cierresMesActual.map(c => ({ 
+    label: c.fecha.split('/').slice(0,2).join('/'), 
+    val: c.totalNegocio 
+  }));
   renderChartGeneric('chart-dias', entries);
 }
 
@@ -701,7 +800,7 @@ function renderChartGeneric(containerId, entries) {
   }).join('');
 }
 
-// ── EMPLEADAS ─────────────────────────────────────────────────────
+// ── EMPLEADAS (MEJORADO) ──────────────────────────────────────────
 function renderEmpleadas() {
   const grid = $('emp-grid');
   const avatars = { lashista: '✿', manicurista: '💅', estilista: '✂' };
@@ -717,13 +816,16 @@ function renderEmpleadas() {
         <button class="emp-btn danger" data-del="${e.id}">✕ Eliminar</button>
       </div>
     </div>`).join('');
+  
   grid.querySelectorAll('[data-edit]').forEach(btn => btn.addEventListener('click', () => openModalEmp(btn.dataset.edit)));
   grid.querySelectorAll('[data-del]').forEach(btn => {
     btn.addEventListener('click', () => {
       if (confirm('¿Eliminar esta empleada?')) {
         empleadas = empleadas.filter(e => e.id !== btn.dataset.del);
         save('ms_empleadas', empleadas);
-        renderEmpleadas(); populateSelectores(); toast('Empleada eliminada');
+        renderEmpleadas(); 
+        populateSelectores(); 
+        toast('Empleada eliminada');
       }
     });
   });
@@ -756,11 +858,17 @@ $('btn-save-emp').addEventListener('click', () => {
   const tipo   = $('inp-emp-tipo').value;
   if (!nombre) { toast('Escribe el nombre', 'error'); return; }
   let pctNegocio = tipo === 'lashista' ? 0.6 : tipo === 'manicurista' ? 0.5 : parseFloat($('inp-emp-pct').value) / 100;
-  if (editEmpId) { const idx = empleadas.findIndex(e => e.id === editEmpId); empleadas[idx] = { ...empleadas[idx], nombre, tipo, pctNegocio }; }
+  
+  if (editEmpId) { 
+    const idx = empleadas.findIndex(e => e.id === editEmpId); 
+    empleadas[idx] = { ...empleadas[idx], nombre, tipo, pctNegocio }; 
+  }
   else empleadas.push({ id: uid(), nombre, tipo, pctNegocio });
+  
   save('ms_empleadas', empleadas);
   $('modal-emp').style.display = 'none';
-  renderEmpleadas(); populateSelectores();
+  renderEmpleadas(); 
+  populateSelectores();
   toast(editEmpId ? 'Empleada actualizada ✓' : 'Empleada agregada ✓');
   editEmpId = null;
 });
@@ -792,7 +900,10 @@ function renderServicios() {
     btn.addEventListener('click', () => {
       if (confirm('¿Eliminar este servicio?')) {
         servicios = servicios.filter(s => s.id !== btn.dataset.del);
-        save('ms_servicios', servicios); renderServicios(); populateSelectores(); toast('Servicio eliminado');
+        save('ms_servicios', servicios); 
+        renderServicios(); 
+        populateSelectores(); 
+        toast('Servicio eliminado');
       }
     });
   });
@@ -812,8 +923,10 @@ function openModalSrv(id = null) {
     else { $('inp-srv-pct').value = 'custom'; $('inp-srv-pct-custom').value = Math.round(pct*100); }
     $('campo-srv-custom').style.display = (pct !== 0.6 && pct !== 0.5) ? 'flex' : 'none';
   } else {
-    $('inp-srv-nombre').value = ''; $('inp-srv-precio').value = '';
-    $('inp-srv-cat').value = 'manicure'; $('inp-srv-pct').value = '0.5';
+    $('inp-srv-nombre').value = ''; 
+    $('inp-srv-precio').value = '';
+    $('inp-srv-cat').value = 'manicure'; 
+    $('inp-srv-pct').value = '0.5';
     $('campo-srv-custom').style.display = 'none';
   }
   $('modal-srv').style.display = 'flex';
@@ -821,7 +934,9 @@ function openModalSrv(id = null) {
 
 $('btn-nuevo-srv').addEventListener('click', () => openModalSrv());
 $('btn-cancel-srv').addEventListener('click', () => { $('modal-srv').style.display = 'none'; });
-$('inp-srv-pct').addEventListener('change', () => { $('campo-srv-custom').style.display = $('inp-srv-pct').value === 'custom' ? 'flex' : 'none'; });
+$('inp-srv-pct').addEventListener('change', () => { 
+  $('campo-srv-custom').style.display = $('inp-srv-pct').value === 'custom' ? 'flex' : 'none'; 
+});
 $('btn-save-srv').addEventListener('click', () => {
   const nombre = $('inp-srv-nombre').value.trim();
   const precio = parseFloat($('inp-srv-precio').value);
@@ -830,11 +945,15 @@ $('btn-save-srv').addEventListener('click', () => {
   if (!precio || precio <= 0) { toast('Precio inválido', 'error'); return; }
   const pctRaw = $('inp-srv-pct').value;
   const pctNegocio = pctRaw === 'custom' ? parseFloat($('inp-srv-pct-custom').value) / 100 : parseFloat(pctRaw);
-  if (editSrvId) { const idx = servicios.findIndex(s => s.id === editSrvId); servicios[idx] = { ...servicios[idx], nombre, precio, cat, pctNegocio }; }
+  if (editSrvId) { 
+    const idx = servicios.findIndex(s => s.id === editSrvId); 
+    servicios[idx] = { ...servicios[idx], nombre, precio, cat, pctNegocio }; 
+  }
   else servicios.push({ id: uid(), nombre, precio, cat, pctNegocio });
   save('ms_servicios', servicios);
   $('modal-srv').style.display = 'none';
-  renderServicios(); populateSelectores();
+  renderServicios(); 
+  populateSelectores();
   toast(editSrvId ? 'Servicio actualizado ✓' : 'Servicio agregado ✓');
   editSrvId = null;
 });
@@ -856,7 +975,10 @@ function renderCostos() {
     btn.addEventListener('click', () => {
       if (confirm('¿Eliminar este costo?')) {
         costos = costos.filter(c => c.id !== btn.dataset.id);
-        save('ms_costos', costos); renderCostos(); setEquilibrioUI(); toast('Costo eliminado');
+        save('ms_costos', costos); 
+        renderCostos(); 
+        setEquilibrioUI(); 
+        toast('Costo eliminado');
       }
     });
   });
@@ -865,8 +987,15 @@ function renderCostos() {
 
 function openModalCosto(id = null) {
   editCostoId = id;
-  if (id) { const c = costos.find(c => c.id === id); $('inp-costo-nombre').value = c.concepto; $('inp-costo-valor').value = c.valor; }
-  else { $('inp-costo-nombre').value = ''; $('inp-costo-valor').value = ''; }
+  if (id) { 
+    const c = costos.find(c => c.id === id); 
+    $('inp-costo-nombre').value = c.concepto; 
+    $('inp-costo-valor').value = c.valor; 
+  }
+  else { 
+    $('inp-costo-nombre').value = ''; 
+    $('inp-costo-valor').value = ''; 
+  }
   $('modal-costo').style.display = 'flex';
 }
 
@@ -877,17 +1006,21 @@ $('btn-save-costo').addEventListener('click', () => {
   const valor    = parseFloat($('inp-costo-valor').value);
   if (!concepto) { toast('Escribe el concepto', 'error'); return; }
   if (!valor || valor <= 0) { toast('Valor inválido', 'error'); return; }
-  if (editCostoId) { const idx = costos.findIndex(c => c.id === editCostoId); costos[idx] = { ...costos[idx], concepto, valor }; }
+  if (editCostoId) { 
+    const idx = costos.findIndex(c => c.id === editCostoId); 
+    costos[idx] = { ...costos[idx], concepto, valor }; 
+  }
   else costos.push({ id: uid(), concepto, valor });
   save('ms_costos', costos);
   $('modal-costo').style.display = 'none';
-  renderCostos(); setEquilibrioUI();
+  renderCostos(); 
+  setEquilibrioUI();
   toast(editCostoId ? 'Costo actualizado ✓' : 'Costo agregado ✓');
   editCostoId = null;
 });
 
 // Cerrar modales con click afuera
-['modal-emp','modal-srv','modal-costo','modal-gasto'].forEach(id => {
+['modal-emp','modal-srv','modal-costo','modal-gasto','modal-pago-mixto'].forEach(id => {
   $(id).addEventListener('click', e => { if (e.target === $(id)) $(id).style.display = 'none'; });
 });
 

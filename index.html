@@ -120,6 +120,25 @@
             <div class="total-row muted"><span>Pago empleadas</span><span id="tot-empleadas">$0</span></div>
             <div class="total-row accent"><span>Ganancia bruta negocio</span><span id="tot-negocio">$0</span></div>
           </div>
+          <!-- Modal PAGO MIXTO -->
+<div class="modal-bg" id="modal-pago-mixto" style="display:none">
+  <div class="modal">
+    <h3>💳 Desglose de Pago Mixto</h3>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:1rem">Especifica cuánto en efectivo y cuánto en transferencia</p>
+    <div class="field">
+      <label>Monto en Efectivo ($)</label>
+      <input type="number" id="inp-mixto-efectivo" min="0" placeholder="0" />
+    </div>
+    <div class="field">
+      <label>Monto en Transferencia ($)</label>
+      <input type="number" id="inp-mixto-transfer" min="0" placeholder="0" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btn-cancel-mixto">Cancelar</button>
+      <button class="btn-primary" id="btn-confirm-mixto">Confirmar</button>
+    </div>
+  </div>
+</div>
 
           <!-- Gastos del día — siempre visible -->
           <div class="gastos-section" id="gastos-section">
@@ -332,6 +351,9 @@
         </div>
         <div class="eq-status" id="eq-status">En déficit</div>
       </div>
+      <div style="text-align:center;margin-top:1rem;font-size:.85rem;color:var(--text-muted)">
+  <strong id="eq-mes-actual">MES ACTUAL</strong>
+</div>
       <div class="card" style="margin-top:1.5rem">
         <h3 class="card-title">Ganancia por día (este mes)</h3>
         <div class="chart-container" id="chart-dias"></div>
